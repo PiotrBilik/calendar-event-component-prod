@@ -70,18 +70,4 @@ The new quick actions modal supports:
 - the `Week` and `Day` views have improved event layout and overlap handling
 - the `Day` view includes a focused daily summary
 - the component refreshes automatically after returning from event edit or record navigation
-
-## Example Validation Command
-
-```bash
-sf project deploy start --target-org otwarteklatki \
-  --manifest manifest/package.xml \
-  --dry-run
-```
-
-## Example Deploy Command
-
-```bash
-sf project deploy start --target-org otwarteklatki \
-  --manifest manifest/package.xml
-```
+  
