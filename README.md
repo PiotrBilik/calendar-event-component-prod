@@ -18,16 +18,6 @@ Minimal Salesforce DX package for deploying the updated calendar component to pr
 - development tooling such as `eslint`, `jest`, or `package.json`
 - `FlexiPage` metadata, because the local record page matches the current production layout
 
-## Production Prerequisites
-
-Confirm that production has these fields available and accessible:
-
-- `Event.Status__c`
-- `Event.CampaignMemberId__c`
-- `Campaign.CampaignID__c`
-
-The deploying user must also be allowed to update `Event.Status__c`.
-
 ## Main Changes Compared to the Old Calendar Version
 
 ### Apex
