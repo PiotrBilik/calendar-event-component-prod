@@ -1,37 +1,87 @@
 # Calendar Event Component Prod
 
-Minimalny pakiet Salesforce DX do wdrożenia kalendarza na produkcję.
+Minimal Salesforce DX package for deploying the updated calendar component to production.
 
-## Co zawiera
+## Package Contents
 
 - `force-app/main/default/classes/UserCalendarController.cls`
+- `force-app/main/default/classes/UserCalendarController.cls-meta.xml`
 - `force-app/main/default/lwc/userCalendarComponent/*`
 - `manifest/package.xml`
+- `sfdx-project.json`
 
-## Czego nie zawiera
+## What Is Not Included
 
-- skryptów seedujących i testowych
-- porównań z produkcją
-- ustawień VS Code
-- narzędzi developerskich typu `eslint`, `jest`, `package.json`
-- `FlexiPage`, bo lokalnie nie różni się od aktualnej produkcji
+- sample or seed scripts
+- local comparison folders
+- editor settings
+- development tooling such as `eslint`, `jest`, or `package.json`
+- `FlexiPage` metadata, because the local record page matches the current production layout
 
-## Co wdraża
+## Production Prerequisites
 
-- logikę Apex pobierania eventów i szybkiej zmiany `Event.Status__c`
-- komponent LWC `userCalendarComponent`
-
-## Wymagania po stronie produkcji
-
-Przed wdrożeniem potwierdź, że na produkcji istnieją i są dostępne:
+Confirm that production has these fields available and accessible:
 
 - `Event.Status__c`
 - `Event.CampaignMemberId__c`
 - `Campaign.CampaignID__c`
 
-Użytkownik wdrażający powinien mieć też prawo aktualizacji `Event.Status__c`.
+The deploying user must also be allowed to update `Event.Status__c`.
 
-## Przykładowa walidacja deployu
+## Main Changes Compared to the Old Calendar Version
+
+### Apex
+
+- `UserCalendarController.getMyEvents(...)` now returns additional event context:
+  - `WhoId`
+  - `WhatId`
+  - `CampaignMemberId__c`
+  - resolved campaign label and campaign name
+- the controller now performs extra lookup logic for `CampaignMember` and campaign data
+- a new Apex method `updateEventStatus(...)` allows quick status updates directly from the calendar
+- supported quick status values are:
+  - `Not Started`
+  - `Completed`
+  - `Canceled`
+
+### Calendar Behavior
+
+- the default view changes from `Month` to `Agenda`
+- a new `Agenda` view is added
+- users can filter events by:
+  - search text
+  - follow-up visibility
+  - status
+  - time range
+- filter state is preserved in the browser session
+- overdue events are surfaced in an operational alert banner
+- alert items can be ignored and later restored during the same browser session
+- clicking an event opens a quick actions modal instead of navigating directly to the event record
+
+### Quick Actions
+
+The new quick actions modal supports:
+
+- `Open event`
+- `Edit`
+- `Mark completed`
+- `Mark canceled`
+- `Open campaign member`
+
+### Campaign Context
+
+- events can now display a campaign tag derived from `Campaign.CampaignID__c`
+- if the campaign ID is missing, the UI falls back to the campaign name
+- the full campaign name can be shown as supporting text
+
+### UX and Display
+
+- the `Month` view shows richer event cards and campaign tags
+- the `Week` and `Day` views have improved event layout and overlap handling
+- the `Day` view includes a focused daily summary
+- the component refreshes automatically after returning from event edit or record navigation
+
+## Example Validation Command
 
 ```bash
 sf project deploy start --target-org otwarteklatki \
@@ -39,7 +89,7 @@ sf project deploy start --target-org otwarteklatki \
   --dry-run
 ```
 
-## Przykładowy deploy
+## Example Deploy Command
 
 ```bash
 sf project deploy start --target-org otwarteklatki \
