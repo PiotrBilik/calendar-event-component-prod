@@ -1,0 +1,390 @@
+<template>
+  <div class="uc-card" data-view={view}>
+    <div class="uc-header">
+      <div class="uc-left">
+        <lightning-button-group>
+          <lightning-button variant="neutral" label="‹" title="Previous" onclick={goPrev}></lightning-button>
+          <lightning-button variant="neutral" label="Today" title="Go to today" onclick={goToday}></lightning-button>
+          <lightning-button variant="neutral" label="›" title="Next" onclick={goNext}></lightning-button>
+        </lightning-button-group>
+      </div>
+      <h2 class="uc-title">{titleLabel}</h2 >
+
+      <div class="uc-right">
+       <lightning-button class="uc-new-btn slds-m-left_small"
+                          label="New Event"
+                          icon-name="utility:add"
+                          variant="brand"
+                          onclick={handleNewEventClick}>
+        </lightning-button>
+        <lightning-button-group>
+          <lightning-button label="Agenda" variant={agendaBtnVariant} onclick={setAgenda}></lightning-button>
+          <lightning-button label="Month" variant={monthBtnVariant} onclick={setMonth}></lightning-button>
+          <lightning-button label="Week"  variant={weekBtnVariant}  onclick={setWeek}></lightning-button>
+          <lightning-button label="Day"   variant={dayBtnVariant}   onclick={setDay}></lightning-button>
+        </lightning-button-group>
+
+        <lightning-button-menu alternative-text="More" menu-alignment="right" class="uc-moremenu" onselect={handleMenuSelect}>
+          <lightning-menu-item value="refresh" label="Refresh"></lightning-menu-item>
+        </lightning-button-menu>
+      </div>
+    </div>
+
+    <div class="uc-filters">
+      <lightning-input
+        class="uc-search"
+        type="search"
+        label="Search"
+        variant="label-hidden"
+        placeholder={searchPlaceholder}
+        value={searchTerm}
+        onchange={handleSearchChange}>
+      </lightning-input>
+      <lightning-combobox
+        class="uc-filter-select"
+        label="Filter"
+        variant="label-hidden"
+        value={callFilter}
+        options={callFilterOptions}
+        onchange={handleFilterChange}>
+      </lightning-combobox>
+      <lightning-combobox
+        class="uc-filter-select"
+        label="Status filter"
+        variant="label-hidden"
+        value={statusFilter}
+        options={statusFilterOptions}
+        onchange={handleStatusFilterChange}>
+      </lightning-combobox>
+      <lightning-combobox
+        class="uc-filter-select"
+        label="Time filter"
+        variant="label-hidden"
+        value={timeFilter}
+        options={timeFilterOptions}
+        onchange={handleTimeFilterChange}>
+      </lightning-combobox>
+      <template if:true={showClearFilters}>
+        <button class="uc-reset-btn" onclick={handleClearFilters}>Clear filters</button>
+      </template>
+    </div>
+
+    <template if:true={showActiveAlert}>
+      <section class={activeAlertEvent.alertClass}>
+        <div class="uc-alert-main">
+          <p class="uc-alert-kicker">{activeAlertEvent.alertTitle}</p>
+          <h3 class="uc-alert-title">{activeAlertEvent.title}</h3>
+          <div class="uc-alert-meta">
+            <span>{activeAlertEvent.timeRangeLabel}</span>
+            <span>{activeAlertEvent.statusLabel}</span>
+            <template if:true={activeAlertEvent.hasCampaignTag}>
+              <span>{activeAlertEvent.campaignTagLabel}</span>
+            </template>
+          </div>
+          <p class="uc-alert-copy">{activeAlertEvent.alertMessage}</p>
+        </div>
+        <div class="uc-alert-actions">
+          <template if:true={activeAlertEvent.canOpenQuickActions}>
+            <button class="uc-linkbtn" data-id={activeAlertEvent.id} onclick={handleAlertOpenEvent}>Open quick actions</button>
+          </template>
+          <template if:true={activeAlertEvent.canIgnore}>
+            <button class="uc-linkbtn uc-alert-ignore" data-id={activeAlertEvent.id} onclick={handleIgnoreAlert}>Ignore</button>
+          </template>
+          <template if:true={activeAlertEvent.canRestoreIgnored}>
+            <button class="uc-linkbtn uc-alert-ignore" onclick={handleRestoreIgnoredAlerts}>Restore ignored</button>
+          </template>
+        </div>
+      </section>
+    </template>
+
+    <template if:true={showEventPreview}>
+      <template if:true={showEventPreviewBackdrop}>
+        <div class="uc-preview-backdrop" onclick={clearSelectedEvent}></div>
+      </template>
+      <section class={eventPreviewClass}>
+        <div class="uc-preview-head">
+          <div>
+            <p class="uc-preview-kicker">Selected event</p>
+            <h3 class="uc-preview-title">{selectedEventCard.title}</h3>
+          </div>
+          <button class="uc-preview-close" onclick={clearSelectedEvent} title="Close details">Close</button>
+        </div>
+        <div class="uc-preview-meta">
+          <span>{selectedEventCard.timeRangeLabel}</span>
+          <span>{selectedEventCard.statusLabel}</span>
+        </div>
+        <div class="uc-agenda-badges">
+          <span class={selectedEventCard.typeClass}>{selectedEventCard.typeLabel}</span>
+          <template if:true={selectedEventCard.hasCampaignTag}>
+            <span class="uc-type-badge uc-type-campaign" title={selectedEventCard.campaignTooltip}>{selectedEventCard.campaignTagLabel}</span>
+          </template>
+          <template if:true={selectedEventCard.isOverdue}>
+            <span class="uc-type-badge uc-type-overdue">Overdue</span>
+          </template>
+        </div>
+        <template if:true={selectedEventCard.campaignName}>
+          <div class="uc-campaign-name">{selectedEventCard.campaignName}</div>
+        </template>
+        <div class="uc-preview-actions">
+          <button class="uc-linkbtn" data-id={selectedEventCard.id} onclick={handlePreviewOpenEvent}>Open event</button>
+          <button class="uc-linkbtn" data-id={selectedEventCard.id} onclick={handleEditEvent}>Edit</button>
+          <template if:true={selectedEventCard.canMarkCompleted}>
+            <button class="uc-linkbtn" data-id={selectedEventCard.id} data-status="Completed" onclick={handleQuickStatus}>Mark completed</button>
+          </template>
+          <template if:true={selectedEventCard.canMarkCanceled}>
+            <button class="uc-linkbtn" data-id={selectedEventCard.id} data-status="Canceled" onclick={handleQuickStatus}>Mark canceled</button>
+          </template>
+          <template if:true={selectedEventCard.hasCampaignMemberLink}>
+            <button
+              class="uc-linkbtn"
+              data-record-id={selectedEventCard.campaignMemberId}
+              data-object-api-name="CampaignMember"
+              onclick={handleOpenRecord}>
+              Open campaign member
+            </button>
+          </template>
+        </div>
+      </section>
+    </template>
+
+    <template if:true={showEmptyState}>
+      <section class="uc-empty-state">
+        <h3 class="uc-empty-title">{emptyStateTitle}</h3>
+        <p class="uc-empty-copy">{emptyStateMessage}</p>
+      </section>
+    </template>
+
+    <!-- Month weekday labels -->
+    <template if:true={showGridHeader}>
+      <div class="uc-weekdays">
+        <template for:each={weekdayLabels} for:item="w">
+          <div key={w} class="uc-weekday">{w}</div>
+        </template>
+      </div>
+    </template>
+
+    <!-- MONTH GRID (unchanged) -->
+    <template if:true={showGrid}>
+      <div class={gridClass}>
+        <template for:each={days} for:item="d">
+          <div key={d.key}
+               class={d.className}
+               data-datestr={d.iso}
+               onclick={handleDateClick}>
+            <div class="uc-month-head">
+              <div class="uc-date">{d.day}</div>
+              <div class="uc-month-head-meta">
+                <template if:true={d.hasEvents}>
+                  <span class="uc-month-count">{d.eventCount}</span>
+                </template>
+                <template if:true={d.inMonth}>
+                  <template if:true={d.hasEvents}>
+                    <span class="uc-month-summary">{d.eventCountLabel}</span>
+                  </template>
+                </template>
+              </div>
+            </div>
+
+            <div class="uc-month-events">
+              <template if:true={d.events}>
+                <template for:each={d.events} for:item="ev">
+                  <button key={ev.key}
+                          class="uc-month-event"
+                          style={ev.style}
+                          title={ev.title}
+                          data-id={ev.id}
+                          onclick={handleEventClick}>
+                    <span class="uc-month-event-time">{ev.timeLabel}</span>
+                    <span class="uc-month-event-main">
+                      <span class="uc-month-event-row">
+                        <span class="uc-dot" style={ev.dotStyle}></span>
+                        <span class="uc-month-event-title">{ev.condensedTitle}</span>
+                      </span>
+                      <template if:true={ev.hasCampaignTag}>
+                        <span class="uc-month-event-tag">{ev.campaignTagLabel}</span>
+                      </template>
+                    </span>
+                  </button>
+                </template>
+              </template>
+
+              <template if:false={d.hasEvents}>
+                <div class="uc-month-empty">No events</div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <template if:true={showAgenda}>
+      <div class="uc-agenda">
+        <template for:each={agendaDays} for:item="day">
+          <section key={day.iso} class="uc-agenda-day">
+            <div class="uc-agenda-dayhead">
+              <div>
+                <h3 class="uc-agenda-title">{day.label}</h3>
+                <template if:true={day.subLabel}>
+                  <p class="uc-agenda-subtitle">{day.subLabel}</p>
+                </template>
+              </div>
+              <lightning-button
+                variant="base"
+                label="New Event"
+                data-datestr={day.iso}
+                onclick={handleAgendaNewEvent}>
+              </lightning-button>
+            </div>
+
+            <template if:true={day.events.length}>
+              <div class="uc-agenda-list">
+                <template for:each={day.events} for:item="ev">
+                  <article
+                    key={ev.key}
+                    class={ev.className}
+                    data-id={ev.id}
+                    onclick={handleEventClick}>
+                    <div class="uc-agenda-time">{ev.timeRangeLabel}</div>
+                    <div class="uc-agenda-main">
+                      <div class="uc-agenda-name-row">
+                        <div class="uc-agenda-name">{ev.displayTitle}</div>
+                        <div class="uc-agenda-badges">
+                          <span class={ev.typeClass}>{ev.typeLabel}</span>
+                          <template if:true={ev.hasCampaignTag}>
+                            <span class="uc-type-badge uc-type-campaign" title={ev.campaignTooltip}>{ev.campaignTagLabel}</span>
+                          </template>
+                          <template if:true={ev.isOverdue}>
+                            <span class="uc-type-badge uc-type-overdue">Overdue</span>
+                          </template>
+                        </div>
+                      </div>
+                      <template if:true={ev.hasCampaignName}>
+                        <div class="uc-campaign-name">{ev.campaignName}</div>
+                      </template>
+                      <div class="uc-agenda-meta">{ev.metaLabel}</div>
+                      <template if:true={ev.hasActionRow}>
+                        <div class="uc-agenda-actions">
+                          <template if:true={ev.hasCampaignMemberLink}>
+                            <button
+                              class="uc-linkbtn"
+                              data-record-id={ev.campaignMemberId}
+                              data-object-api-name="CampaignMember"
+                              onclick={handleOpenRecord}>
+                              Open campaign member
+                            </button>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                    <div class="uc-agenda-status">{ev.statusLabel}</div>
+                  </article>
+                </template>
+              </div>
+            </template>
+
+            <template if:false={day.events.length}>
+              <div class="uc-agenda-empty">No events for this day.</div>
+            </template>
+          </section>
+        </template>
+      </div>
+    </template>
+
+    <!-- WEEK & DAY: HOURLY TIME GRID -->
+    <template if:true={showTimeGrid}>
+      <template if:true={showDaySummary}>
+        <section class="uc-day-summary">
+          <div>
+            <p class="uc-preview-kicker">Day focus</p>
+            <h3 class="uc-preview-title">{titleLabel}</h3>
+          </div>
+          <div class="uc-day-summary-stats">
+            <span class="uc-day-stat">{daySummaryStats.totalLabel}</span>
+            <span class="uc-day-stat">{daySummaryStats.completedLabel}</span>
+            <span class="uc-day-stat">{daySummaryStats.overdueLabel}</span>
+            <span class="uc-day-stat">{daySummaryStats.allDayLabel}</span>
+          </div>
+        </section>
+      </template>
+
+      <div class="uc-timegrid-shell">
+        <div class="uc-timegrid">
+          <!-- hour gutter -->
+          <div class="uc-hours">
+            <div class="uc-hours-head"></div>
+            <div class="uc-hours-allday">All day</div>
+            <div class="uc-hours-body">
+              <template for:each={hours} for:item="h">
+                <div key={h} class="uc-hour-label">{h}:00</div>
+              </template>
+            </div>
+          </div>
+
+          <!-- day columns -->
+          <div class="uc-timecols">
+            <template for:each={timeGridCols} for:item="col">
+              <div key={col.iso} class="uc-timecol">
+                <div class={col.headerClass}>
+                  <div class="uc-timecol-head-main">
+                    <span class="uc-timecol-day">{col.headerDayLabel}</span>
+                    <span class="uc-timecol-date">{col.headerDateLabel}</span>
+                  </div>
+                  <div class="uc-timecol-head-meta">
+                    <template if:true={col.headerSubLabel}>
+                      <span class="uc-timecol-chip uc-timecol-chip-today">{col.headerSubLabel}</span>
+                    </template>
+                    <span class="uc-timecol-chip">{col.timedCount} events</span>
+                    <template if:true={col.overdueCount}>
+                      <span class="uc-timecol-chip uc-timecol-chip-overdue">{col.overdueCount} overdue</span>
+                    </template>
+                  </div>
+                </div>
+
+                <div class="uc-allday">
+                  <template for:each={col.allDay} for:item="ev">
+                    <div key={ev.id}
+                        class="uc-event uc-allday-pill {ev.statusClass}"
+                        style={ev.style}
+                        title={ev.rawTitle}
+                        data-id={ev.id}
+                        onclick={handleEventClick}>
+                      <span class="uc-dot"></span>
+                      <span class="uc-evt-title">{ev.title}</span>
+                    </div>
+                  </template>
+                </div>
+
+                <div class="uc-timecol-body">
+                  <template if:true={col.showNowLine}>
+                    <div class="uc-now-line" style={nowLineStyle}>
+                      <span class="uc-now-dot"></span>
+                    </div>
+                  </template>
+                  <template for:each={col.timed} for:item="ev">
+                    <div key={ev.key}
+                        class="uc-event uc-float {ev.statusClass}"
+                        style={ev.style}
+                        title={ev.rawTitle}
+                        data-id={ev.id}
+                        onclick={handleEventClick}>
+                      <div class="uc-evt-line1">
+                        <span class="uc-evt-time">{ev.timeRangeLabel}</span>
+                        <template if:true={ev.hasCampaignTag}>
+                          <span class="uc-evt-badge">{ev.campaignTagLabel}</span>
+                        </template>
+                      </div>
+                      <div class="uc-evt-title">{ev.title}</div>
+                      <template if:true={showDayCampaignSubtitle}>
+                        <div class="uc-evt-subtitle">{ev.campaignName}</div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>
